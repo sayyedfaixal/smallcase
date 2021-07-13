@@ -190,7 +190,7 @@ router.post('/sellTrade',async (req, res, next) => {
       res.send(`After selling ${selling_shares} shares of ${ticker}, You have ${shares} shares left and your cumulative return of the portfolio is ₹${result}`);
       }
       else{
-        console.log('Inside else...')
+        // console.log('Inside else...')
         const doc_sell = new tradeSold({
           ticker : ticker,
           selling_shares : selling_shares
@@ -268,7 +268,7 @@ router.get('/cumulative', async (req, res, next) => {
     
     let portfolio_data = await fetchPortfolio();
 
-    let data = await Promise.all(portfolio_data.map(r => cumulativeReturns(r)));
+    let data = await (portfolio_data.map(r => cumulativeReturns(r)));
     
     data = +(data.reduce((sum, data) => sum + data, 0)).toFixed(2);
 
@@ -310,16 +310,16 @@ router.get('/holdings', async (req, res, next) => {
 //// ------------------------------------------------DELETING ------------------------------------------------
 router.delete('/:id', async (req, res, next) =>{
   // res.send('Deleted...');
-  const id = req.params.ticker;
+  const id = req.params.id;
   try {
-
+    console.log(id)
     const result = await portfolio.findOneAndDelete({ticker: id});
-    // console.log(result);
+    console.log(result);
     if(!result){
       throw (new createError(404, "Security Not Found..."));
     }
     console.log(result);
-    res.send(result);
+    res.send(`Successfully Deleted ${result} from Portfolio`);
   } catch (error) {
     console.log(error.message);
     if(error instanceof mongoose.CastError){
@@ -348,23 +348,27 @@ router.delete('/:id', async (req, res, next) =>{
         throw Error(`You don't have ${ticker} securities to sell`);
       }
       else{
-        res.send(found);
+        // res.send(found);
         // console.log(found[0].new_shares);
         let updateShare = found[0].new_shares -  sellShare;
-        console.log(updateShare);
+        // console.log(updateShare);
         await tradeBought.updateOne({ticker}, {new_shares : updateShare});
         let sold = await tradeSold.find({ticker});
         if(sold){
               let num_shares = sold[0].selling_shares;
               num_shares+=sellShare
               await tradeSold.updateOne({ticker}, {selling_shares : num_shares});
+              res.send(`Successfully Updated Trade of ${ticker} from BUY to SELL`);
         }
         else{
           const updateSellShareDoc = new tradeSold({
             ticker: ticker,
             selling_shares : sellShare
           });
+          console.log('Inside else of if')
           await updateSellShareDoc.save();
+          res.send(`Successfully Updated Trade of ${ticker} from BUY to SELL`);
+
         }
       }
     } catch (error) {
@@ -395,6 +399,8 @@ router.delete('/:id', async (req, res, next) =>{
         let numNewShare = buy[0].new_shares; 
         numNewShare+=boughtShare;
         await tradeBought.updateOne({ticker}, {new_shares: numNewShare});
+        res.send(`Successfully Updated Trade of ${ticker} from SELL to BUY`);
+
       }
       else{
         const updateBuyShareDoc = new tradeBought({
@@ -402,6 +408,8 @@ router.delete('/:id', async (req, res, next) =>{
           new_shares : boughtShare
         });
         await updateBuyShareDoc.save();
+        console.log('Inside else of if....')
+        res.send(`Successfully Updated Trade of ${ticker} from SELL to BUY`);
       } 
       }
     } catch (error) {
@@ -409,17 +417,17 @@ router.delete('/:id', async (req, res, next) =>{
     }
   });
 
-// ------------------------------------------------ FINDING TICKER ------------------------------------------------
+// ------------------------------------------------  TICKER ------------------------------------------------
 
-  router.get('/:id',async (req, res, next)=>{
-    try{
-      const id = req.params.id;
-      const tick = await tradeBought.findOne({ticker:id});
-      res.send(tick);
-      console.log(tick);
-    }catch(error){
-      console.log(error.message);
-    }
-  });
+  // router.get('/:id',async (req, res, next)=>{
+  //   try{
+  //     const id = req.params.id;
+  //     const tick = await tradeBought.findOne({ticker:id});
+  //     res.send(tick);
+  //     console.log(tick);
+  //   }catch(error){
+  //     console.log(error.message);
+  //   }
+  // });
 // module.exports
 module.exports = router;
