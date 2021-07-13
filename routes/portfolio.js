@@ -240,7 +240,7 @@ const sellTrade = async ({ ticker, selling_shares }) => {
 
   let portfolio_data = await fetchPortfolio();
   
-  let result = await Promise.all(portfolio_data.map(r => cumulativeReturns(r)));
+  let result = await (portfolio_data.map(r => cumulativeReturns(r)));
 
   result = +(result.reduce((sum, result) => sum + result, 0)).toFixed(2);
 
@@ -310,7 +310,7 @@ router.get('/holdings', async (req, res, next) => {
 //// ------------------------------------------------DELETING ------------------------------------------------
 router.delete('/:id', async (req, res, next) =>{
   // res.send('Deleted...');
-  const id = req.params.id;
+  const id = req.params.ticker;
   try {
 
     const result = await portfolio.findOneAndDelete({ticker: id});
@@ -339,14 +339,17 @@ router.delete('/:id', async (req, res, next) =>{
       let sellShare = req.body.new_shares;
       
       let found = await tradeBought.find({ticker});
-      console.log(found);
+      // console.log(found);
+      if(sellShare<0){
+        return next(new createError(400, `Shares cannot be Negative. You have provided ${sellShare}`));
+      }
       if(found[0] === undefined){
         res.status(400).send(`You don't have ${ticker} securities to sell`); 
         throw Error(`You don't have ${ticker} securities to sell`);
       }
       else{
         res.send(found);
-        console.log(found[0].new_shares);
+        // console.log(found[0].new_shares);
         let updateShare = found[0].new_shares -  sellShare;
         console.log(updateShare);
         await tradeBought.updateOne({ticker}, {new_shares : updateShare});
@@ -375,6 +378,9 @@ router.delete('/:id', async (req, res, next) =>{
       let ticker= req.body.ticker;
       let  boughtShare  = req.body.selling_shares;
       let found = await tradeSold.find({ticker});
+      if(boughtShare<0){
+        return next(new createError(400, `Shares cannot be Negative. You have provided ${boughtShare}`));
+      }
       if(found[0] === undefined){
         res.status(400).send(`You don't have ${ticker} securities to sell`); 
         throw Error(`You don't have ${ticker} securities to Buy`);

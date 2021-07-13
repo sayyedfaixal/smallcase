@@ -21,7 +21,7 @@ mongoose.connection.on('connected', ()=>{
   console.log('Mongoose Connected to DB...');
 })
 
-mongoose.connection.on('error', ()=>{
+mongoose.connection.on('error', (error)=>{
   console.log(error.message);
 })
 
