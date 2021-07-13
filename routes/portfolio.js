@@ -38,9 +38,16 @@ router.post('/createSecurity', async (req, res, next) => {
 try {
 
   let { ticker, avg_buy_price, shares } = req.body;
-
+  if(shares<0){
+    next(new Error(`Quantity of shares should always be Positive, You have provided ${shares}`));
+    return ;
+  }
+  if(avg_buy_price < 0){
+    next(new Error(`Buy Price must be always be positive, You have provided ${avg_buy_price}`));
+    return ;
+  }
   let security = await portfolio.create(req.body);
-
+  
   //TRANSACTION ENTRY
 
   await transaction.create({
