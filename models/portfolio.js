@@ -7,18 +7,14 @@ let portfolioSchema = new mongoose.Schema({
     required : true,
     minlength : 1,
     unique : true,
-    // default : null
   },
   avg_buy_price : {
     type : Number,
     required : true,
-    // default : 0
   },
   shares : {
     type : Number,
     required : true,
-    // default : 0,
-    // min : 0
   }
 
 });

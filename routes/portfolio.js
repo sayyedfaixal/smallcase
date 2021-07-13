@@ -9,6 +9,30 @@ const tradeBought = require('../models/tradeBought');
 const tradeSold = require('../models/tradeSold');
 
 
+//TODO: Create you own error format
+/**
+ *  error = {
+    "error": {
+      "code": "BAD REQUEST"
+      "error_reason": "the request param xyz is missing",
+    }
+  }
+
+//---------------------------------------------------------
+  Fetching trades and its securities
+   router.get('/fetch', async (req, res)=>{
+       try {
+         const result = await portfolio.find();
+         res.send(result);
+       } catch (error) {
+         console.log('Error', error);
+       }
+   });
+ */
+
+//  TODO: Working
+//  NOTE: FIXED
+//  FIXME: Validation, Parse response in JSON
 // ------------------------------------------------ CREATING SECURITY ------------------------------------------------
 router.post('/createSecurity', async (req, res, next) => {
 try {
@@ -38,6 +62,8 @@ try {
 
 });
 
+//FIXME: Response is empty body 
+//NOTE: Fixed
 //FETCHING PORTFOLIO AND ITS SECURITIES
 router.get('/portfolio', async (req, res, next) => {
 
@@ -60,6 +86,9 @@ const fetchPortfolio = async (data) => {
 
 };
 
+//TODO: Working
+//NOTE: Fixed
+//FIXME: Validation if string is passed instead of NUM etc
 
 // ------------------------------------------------PLACING A TRADE------------------------------------------------
 router.post('/buyTrade', async (req, res, next) => {
@@ -74,26 +103,30 @@ router.post('/buyTrade', async (req, res, next) => {
         next(new Error(`Buy Price must be always be positive, You have provided ${buy_price}`));
       }
     let trade = await updateTrade({ ticker, buy_price, new_shares });
-    if(trade){
-      res.send('Successfully placed a trade in the security');
-      
-      await tradeBought.create({
-        ticker : ticker,
-        buy_price : buy_price,
-        new_shares : new_shares
-      });
-      db.tradeBought.find({ name: "bar" }).snapshot().forEach((doc) => {
-        doc.name = "foo-" + doc.name;
-    
-        db.test.save(doc);
-    });
-    } 
-    else res.send('Kindly try placing the trade again!');
 
-  } catch (error) {
+    if(trade){
+          res.send('Successfully placed a trade in the security');
+          let found = await tradeBought.findOne({ticker})
+          if(found!= undefined){
+            let updateShare = trade[0].new_shares + new_shares;
+            await tradeBought.updateOne({ticker}, {buy_price: buy_price, new_shares : updateShare});
+          }
+          else{
+            const doc_buy = new tradeBought({
+              ticker : ticker,
+              buy_price : buy_price,
+              new_shares : new_shares
+            });
+            await doc_buy.save();
+        }
+      }
+      else res.send('Kindly try placing the trade again!'); 
+    } 
+
+   catch (error) {
     // next(error)
     console.log(error.message);
-
+    // res.send('Kindly try placing the trade again!');
     //TRANSACTION ENTRY
     await transaction.create({
       transaction_detail : `FAILED TO PURCHASE ${ticker} SECURITY`,
@@ -134,8 +167,9 @@ const updateTrade = async ({ ticker, buy_price, new_shares }) => {
   return true;
 };
 
+//FIXME: Validation if string is passed instead of NUM etc NOTE: FIXED 
 
-
+//FIXME: If user doesn't hold share that part is working but the else part neeed to be FIXED NOTE: Fixed 
 // ------------------------------------------------ SELLING TRADE ------------------------------------------------
 router.post('/sellTrade',async (req, res, next) => {
 
@@ -148,12 +182,22 @@ router.post('/sellTrade',async (req, res, next) => {
     let trade = await sellTrade({ ticker, selling_shares });
 
     let { shares, result } = trade;
-
-    res.send(`After selling ${selling_shares} shares of ${ticker}, You have ${shares} shares left and your cumulative return of the portfolio is ₹${result}`);
-    await tradeSold.create({
-      ticker : ticker,
-      selling_shares : selling_shares
-    });
+    let found = await tradeSold.findOne({ticker}) 
+    if(found!= undefined){
+      console.log(found);
+      let updateShare = found.selling_shares + selling_shares;
+      await tradeSold.updateOne({ticker}, { selling_shares : updateShare });
+      res.send(`After selling ${selling_shares} shares of ${ticker}, You have ${shares} shares left and your cumulative return of the portfolio is ₹${result}`);
+      }
+      else{
+        console.log('Inside else...')
+        const doc_sell = new tradeSold({
+          ticker : ticker,
+          selling_shares : selling_shares
+        });
+        await doc_sell.save();
+      res.send(`After selling ${selling_shares} shares of ${ticker}, You have ${shares} shares left and your cumulative return of the portfolio is ₹${result}`);
+      }
 
   } catch (error) {
     // next(error);
@@ -166,7 +210,6 @@ router.post('/sellTrade',async (req, res, next) => {
       shares : selling_shares,
       status : 'FAILED'
     });
-
     res.send(error).status(400);
   }
 });
@@ -175,7 +218,6 @@ const sellTrade = async ({ ticker, selling_shares }) => {
 
   let data = await portfolio.find({ ticker });
   data = data[0];
-  console.log(`Data fetched is ${data}`);
   if(!data) throw `You don't own any security for ${ticker} company!`;
 
   let { avg_buy_price, shares } = data;
@@ -206,8 +248,9 @@ const sellTrade = async ({ ticker, selling_shares }) => {
 };
 
 const cumulativeReturns = (final_value) => {
-  
+  // console.log(final_value);
   let { avg_buy_price, shares } = final_value;
+  // console.log(avg_buy_price, shares);
   let current_price = 100, sum = 0; //SETTING CURRENT PRICE TO RS 100.
 
   sum += ((current_price - avg_buy_price) * shares);
@@ -217,6 +260,7 @@ const cumulativeReturns = (final_value) => {
 
 // ------------------------------------------------FETCHING CUMULATIVE RETURNS------------------------------------------------
 
+//FIXME: Return is -ve
 //NOTE:  Return can be -ve
 router.get('/cumulative', async (req, res, next) => {
 
@@ -269,11 +313,12 @@ router.delete('/:id', async (req, res, next) =>{
   const id = req.params.id;
   try {
 
-    const result = await portfolio.findByIdAndDelete(id);
+    const result = await portfolio.findOneAndDelete({ticker: id});
     // console.log(result);
     if(!result){
       throw (new createError(404, "Security Not Found..."));
     }
+    console.log(result);
     res.send(result);
   } catch (error) {
     console.log(error.message);
@@ -284,21 +329,91 @@ router.delete('/:id', async (req, res, next) =>{
     next(error);
   }
 });
-//// ------------------------------------------------ PATCH(Updating the trade) ------------------------------------------------
-  router.patch('/:id',async (req, res, next) =>{
+// ------------------------------------------------ PATCH(Updating the trade) ------------------------------------------------
+// Going from BOUGHT to SOLD
+  router.patch('/update/sell',async (req, res, next) =>{
     try {
-        const id = req.params.id;
-        const updates = req.body;
-        const options = {new : true};
-        const result = await portfolio.findByIdAndUpdate(id, updates, options);
-        res.send(result);
+      console.log(req.body);
+      // let { ticker, sellShare } = req.body;
+      let ticker = req.body.ticker;
+      let sellShare = req.body.new_shares;
+      
+      let found = await tradeBought.find({ticker});
+      console.log(found);
+      if(found[0] === undefined){
+        res.status(400).send(`You don't have ${ticker} securities to sell`); 
+        throw Error(`You don't have ${ticker} securities to sell`);
+      }
+      else{
+        res.send(found);
+        console.log(found[0].new_shares);
+        let updateShare = found[0].new_shares -  sellShare;
+        console.log(updateShare);
+        await tradeBought.updateOne({ticker}, {new_shares : updateShare});
+        let sold = await tradeSold.find({ticker});
+        if(sold){
+              let num_shares = sold[0].selling_shares;
+              num_shares+=sellShare
+              await tradeSold.updateOne({ticker}, {selling_shares : num_shares});
+        }
+        else{
+          const updateSellShareDoc = new tradeSold({
+            ticker: ticker,
+            selling_shares : sellShare
+          });
+          await updateSellShareDoc.save();
+        }
+      }
     } catch (error) {
       console.log(error.message); 
     }
   });
+// Going from SOLD to BOUGHT
+
+  router.patch('/update/buy',async (req, res, next) =>{
+    try {
+      let ticker= req.body.ticker;
+      let  boughtShare  = req.body.selling_shares;
+      let found = await tradeSold.find({ticker});
+      if(found[0] === undefined){
+        res.status(400).send(`You don't have ${ticker} securities to sell`); 
+        throw Error(`You don't have ${ticker} securities to Buy`);
+      }
+      else{
+        
+      let updateShare = found[0].selling_shares - boughtShare;
+
+      await tradeSold.updateOne({ticker}, {selling_shares: updateShare});
+      let buy = await tradeBought.find({ticker});
+      if(buy){
+        let numNewShare = buy[0].new_shares; 
+        numNewShare+=boughtShare;
+        await tradeBought.updateOne({ticker}, {new_shares: numNewShare});
+      }
+      else{
+        const updateBuyShareDoc = new tradeBought({
+          ticker: ticker,
+          new_shares : boughtShare
+        });
+        await updateBuyShareDoc.save();
+      } 
+      }
+    } catch (error) {
+      console.log(error.message); 
+    }
+  });
+
+// ------------------------------------------------ FINDING TICKER ------------------------------------------------
+
+  router.get('/:id',async (req, res, next)=>{
+    try{
+      const id = req.params.id;
+      const tick = await tradeBought.findOne({ticker:id});
+      res.send(tick);
+      console.log(tick);
+    }catch(error){
+      console.log(error.message);
+    }
+  });
 // module.exports
 module.exports = router;
-
-
-
-

@@ -10,7 +10,6 @@ const dotenv = require('dotenv').config()
  */
  
 const numCPUs = require('os').cpus().length;
-const port = process.env.PORT || 8000;
 
 let router = require('./routes/portfolio');
 let app = express();
