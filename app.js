@@ -14,17 +14,13 @@ const numCPUs = require('os').cpus().length;
 let router = require('./routes/portfolio');
 let app = express();
 
-//This is like using body-parser because now express has already built-in
-app.use(express.json());
 //connecting to mongodb 
-
-//Atlas user, password : fasial, smallcase 
 //Initialize DB from initDB.js
-
 require('./initDB')();
 
 app.use(express.json());
 app.use('/', router);
+
 
 app.use((req, res, next)=>{
 

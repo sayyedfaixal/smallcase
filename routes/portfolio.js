@@ -7,8 +7,6 @@ const portfolio= require('../models/portfolio') ;
 const transaction= require('../models/securityTransaction');
 const tradeBought = require('../models/tradeBought');
 const tradeSold = require('../models/tradeSold');
-
-
 //TODO: Create you own error format
 /**
  *  error = {
@@ -33,6 +31,18 @@ const tradeSold = require('../models/tradeSold');
 //  TODO: Working
 //  NOTE: FIXED
 //  FIXME: Validation, Parse response in JSON
+
+router.get('/', (req, res)=>{
+  res.write(`<h1>Smallcase API</h1>`);
+  res.write(`<h2>This app is built by Mohammad Faisal Sayed</h4>`);
+  res.write(`<ol>
+                <li><a href="https://smallcase-faisal.herokuapp.com/portfolio">Portfolio Route</a> </li>
+                <li><a href="https://smallcase-faisal.herokuapp.com/holdings">Holdings Route</a> </li>
+                <li><a href="https://smallcase-faisal.herokuapp.com/cumulative">Cumulative Route</a> </li>
+          </ol>`);
+    res.write(`<a href="https://documenter.getpostman.com/view/14985399/Tzm9iZYA">API Documentation</a> `);
+    res.end();
+});
 // ------------------------------------------------ CREATING SECURITY ------------------------------------------------
 router.post('/createSecurity', async (req, res, next) => {
 try {
